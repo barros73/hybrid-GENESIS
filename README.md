@@ -90,10 +90,10 @@ All operations, payload summaries, and state mutations are automatically appende
 
 GENESIS is the genesis point of a 4-tier software traceability pipeline:
 
-1.  **Layer 0 (GENESIS)**: Spatial Brainstorming & The "Why".
-2.  **Layer 1 (TREE)**: Linear Project Management & The "What".
-3.  **Layer 2 (MATRIX)**: Deterministic JSON Traceability & The "Where".
-4.  **Layer 3 (RCP)**: Static Code Analysis & The "How".
+1.  **Layer 0 (GENESIS)**: `export` (Spatial Brainstorming & Intent).
+2.  **Layer 1 (TREE)**: `consolidate` (Linear Logic & Checkpoints).
+3.  **Layer 3 (RCP)**: `export-structure` (Static Analysis & Reality).
+4.  **Layer 2 (MATRIX)**: `connect` & `bridge` (Traceability & Next Best Action).
 
 ---
 *Copyright 2026 Fabrizio Baroni. Licensed under the Apache License, Version 2.0.*
