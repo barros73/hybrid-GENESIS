@@ -13,8 +13,10 @@ export interface NodeMetadata {
 
 export interface GenesisNode {
     id: string;
+    index: string; // Hierarchical Index (e.g., 1.0, 1.1)
     type: NodeType;
     label: string;
+    description?: string; // Action Context / Prompt
     data?: NodeMetadata; // Extra metadata for nodes
 }
 

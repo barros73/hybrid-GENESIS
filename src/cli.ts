@@ -10,6 +10,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { StateEngine } from './core/StateEngine';
 import { LogicValidator } from './core/LogicValidator';
+import { GenesisNode } from './core/types';
 import express, { Request, Response } from 'express';
 
 const program = new Command();
@@ -88,36 +89,47 @@ function generateMarkdownExport(aiFormat: boolean = false): void {
 
     // Generate Logical Tree from GOALS and COMPONENTS
     const goals = map.nodes.filter(n => n.type === 'GOAL');
+    goals.sort((a, b) => a.index.localeCompare(b.index));
+
     goals.forEach((goal, gIdx) => {
         const isLastGoal = gIdx === goals.length - 1;
-        markdown += `${isLastGoal ? '└──' : '├──'} [ ] ${goal.id}: ${goal.label}\n`;
+        markdown += `${isLastGoal ? '└──' : '├──'} [ ] ${goal.index}: ${goal.label}\n`;
 
         const children = map.edges
             .filter(e => e.source === goal.id)
             .map(e => map.nodes.find(n => n.id === e.target))
-            .filter(n => n && (n.type === 'COMPONENT' || n.type === 'CONSTRAINT'));
+            .filter(n => n && (n.type === 'COMPONENT' || n.type === 'CONSTRAINT')) as GenesisNode[];
+
+        children.sort((a, b) => a.index.localeCompare(b.index));
 
         children.forEach((child, cIdx) => {
             const isLastChild = cIdx === children.length - 1;
             const prefix = isLastGoal ? '    ' : '│   ';
-            markdown += `${prefix}${isLastChild ? '└──' : '├──'} [ ] ${child?.id}: ${child?.label}\n`;
+            markdown += `${prefix}${isLastChild ? '└──' : '├──'} [ ] ${child.index}: ${child.label}\n`;
         });
     });
 
     markdown += `\n---\n\n`;
     markdown += `## 📝 Detailed Checklist by Chapters (Action Tree)\n\n`;
 
-    goals.forEach((goal, idx) => {
-        markdown += `### Chapter ${idx + 1}: ${goal.label}\n`;
+    goals.forEach((goal) => {
+        markdown += `### Chapter ${goal.index}: ${goal.label}\n`;
+        if (goal.description) markdown += `> ${goal.description}\n`;
         markdown += `- [ ] INITIALIZE: Setup foundations for ${goal.id}.\n`;
 
         const targets = map.edges.filter(e => e.source === goal.id);
-        targets.forEach(t => {
-            const node = map.nodes.find(n => n.id === t.target);
-            if (node) {
-                markdown += `- [ ] IMPLEMENT: ${node.label} (${node.id})\n`;
-                markdown += `  > Rationale: ${t.rationale}\n`;
-            }
+        const children = targets
+            .map(t => ({ target: t, node: map.nodes.find(n => n.id === t.target) }))
+            .filter(x => x.node);
+
+        children.sort((a, b) => a.node!.index.localeCompare(a.node!.index));
+
+        children.forEach(c => {
+            const node = c.node!;
+            const edge = c.target;
+            markdown += `- [ ] Mission ${node.index}: ${node.label} (${node.id})\n`;
+            if (node.description) markdown += `  > ${node.description}\n`;
+            markdown += `  > Rationale: ${edge.rationale}\n`;
         });
         markdown += `\n`;
     });
