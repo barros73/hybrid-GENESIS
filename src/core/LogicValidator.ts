@@ -44,6 +44,17 @@ export class LogicValidator {
             }
         }
 
+        // 1.5 Detect Missing Ownership Metadata (Rust Optimization)
+        for (const component of components) {
+            if (!component.data || !component.data.ownership) {
+                conflicts.push({
+                    severity: 'WARNING',
+                    description: `Missing Ownership Context: Component '${component.label}' does not define an 'ownership' policy (e.g., Shared, Owned, Mut). This is highly recommended for Rust code generation to prevent borrow-checker conflicts in the generated Skeleton.`,
+                    nodes: [component.id]
+                });
+            }
+        }
+
         // 2. Detect Isolated Nodes & Goal Paths
         const goals = map.nodes.filter(n => n.type === 'GOAL');
         for (const goal of goals) {

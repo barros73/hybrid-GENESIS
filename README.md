@@ -35,24 +35,54 @@ curl -sSL https://raw.githubusercontent.com/barros73/hybrid-BIM/main/install.sh 
 ```
 *(Or run `bash install.sh` if you have the repository cloned locally).*
 
-## 🛠️ Usage
+## 🛠️ Usage & CLI Reference
 
-### Manual Installation
+This node executable operates as the master orchestrator for Layer 0.
+
+### Global Options
+All commands support the hidden `--ai-format` flag. When appended, it suppresses human-readable console outputs (emojis and prose) to return strictly pure JSON payloads. This is essential for chaining inputs into LLM Agents and pipeline automation.
+
+### `hybrid-genesis start`
+Starts a persistent background daemon that exposes local HTTP endpoints to build your architectural graph dynamically.
+
+**Options:**
+- `-p, --port <number>`: Port for the local API server (Default: `3000`).
+
+**Detailed Behavior:**
+- The daemon waits for `POST /node` and `POST /edge` payloads to build logical components and the rationale vectors connecting them.
+- Any mutation automatically streams to `.hybrid/genesis-map.json` ensuring no context is lost.
+- Upon significant changes, it automatically triggers a flattening export.
+
+**Example:**
 ```bash
-npm install -g .
+hybrid-genesis start --port 4000
 ```
 
-### Start the Daemon
-```bash
-hybrid-genesis start
-```
-Runs the background orchestrator and local API server (default port 3000).
+### `hybrid-genesis export`
+Takes the 3D semantic graph database (`genesis-map.json`) and deterministically flattens it down to a 2D Action Checklist. 
 
-### Export to TREE
+**Options:**
+- `--target <type>`: Identifies the target framework (Use `tree`).
+- `--ai-format`: Outputs as `{ "status": "success", "path": "...", "goals_count": 4 }`.
+
+**Detailed Behavior:**
+- Produces a fully actionable `GENESIS_EXPORT_TREE.md` located inside `.hybrid/`.
+- The Markdown is pre-formatted with actionable states (`[ ]`, `[/]`, `[X]`), nested component scopes, and embedded architecture rationales ready to be ingested by Layer 1 (TREE).
+
+**Example:**
 ```bash
-hybrid-genesis export --target tree
+hybrid-genesis export --target tree --ai-format
 ```
-Generates `GENESIS_EXPORT_TREE.md` for handoff to **hybrid-TREE**.
+
+---
+
+## 📜 Global Ecosystem Logging
+To safeguard against traceability losses in complex pipelines, `hybrid-GENESIS` records every CLI execution into a persistent audit history file.
+
+All operations, payload summaries, and state mutations are automatically appended tracking absolute timestamps:
+**`📁 .hybrid/genesis-report.log`**
+
+*This enables humans or sub-agents to trace back the exact command timeline during Brownfield integrations or debugging sessions.*
 
 ---
 
