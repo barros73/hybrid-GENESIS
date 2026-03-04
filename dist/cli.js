@@ -47,6 +47,7 @@ const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const StateEngine_1 = require("./core/StateEngine");
 const LogicValidator_1 = require("./core/LogicValidator");
+const SyncEngine_1 = require("./core/SyncEngine");
 const express_1 = __importDefault(require("express"));
 const program = new commander_1.Command();
 const workspaceRoot = process.cwd();
@@ -54,7 +55,7 @@ const stateEngine = new StateEngine_1.StateEngine(workspaceRoot);
 program
     .name('hybrid-genesis')
     .description('Layer 0 of the Hybrid Ecosystem: Spatial Architecture Planning')
-    .version('1.0.0');
+    .version('0.6.1');
 program
     .command('start')
     .description('Start the GENESIS daemon and local API server')
@@ -64,6 +65,24 @@ program
     console.log(`🌌 hybrid-GENESIS: Starting Daemon on port ${port}...`);
     const app = (0, express_1.default)();
     app.use(express_1.default.json());
+    // Simple CORS middleware
+    app.use((req, res, next) => {
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type');
+        if (req.method === 'OPTIONS') {
+            res.sendStatus(200);
+        }
+        else {
+            next();
+        }
+    });
+    app.get('/', (req, res) => {
+        res.send('🌌 hybrid-GENESIS Daemon is active. Use the VS Code extension to view the 3D graph.');
+    });
+    app.get('/health', (req, res) => {
+        res.json({ status: 'UP', timestamp: new Date().toISOString() });
+    });
     app.get('/map', (req, res) => {
         const map = stateEngine.readMap();
         const conflicts = LogicValidator_1.LogicValidator.analyze(map);
@@ -115,31 +134,40 @@ function generateMarkdownExport(aiFormat = false) {
     markdown += `root (${map.project_name})\n`;
     // Generate Logical Tree from GOALS and COMPONENTS
     const goals = map.nodes.filter(n => n.type === 'GOAL');
+    goals.sort((a, b) => a.index.localeCompare(b.index));
     goals.forEach((goal, gIdx) => {
         const isLastGoal = gIdx === goals.length - 1;
-        markdown += `${isLastGoal ? '└──' : '├──'} [ ] ${goal.id}: ${goal.label}\n`;
+        markdown += `${isLastGoal ? '└──' : '├──'} [ ] ${goal.index}: ${goal.label}\n`;
         const children = map.edges
             .filter(e => e.source === goal.id)
             .map(e => map.nodes.find(n => n.id === e.target))
             .filter(n => n && (n.type === 'COMPONENT' || n.type === 'CONSTRAINT'));
+        children.sort((a, b) => a.index.localeCompare(b.index));
         children.forEach((child, cIdx) => {
             const isLastChild = cIdx === children.length - 1;
             const prefix = isLastGoal ? '    ' : '│   ';
-            markdown += `${prefix}${isLastChild ? '└──' : '├──'} [ ] ${child?.id}: ${child?.label}\n`;
+            markdown += `${prefix}${isLastChild ? '└──' : '├──'} [ ] ${child.index}: ${child.label}\n`;
         });
     });
     markdown += `\n---\n\n`;
     markdown += `## 📝 Detailed Checklist by Chapters (Action Tree)\n\n`;
-    goals.forEach((goal, idx) => {
-        markdown += `### Chapter ${idx + 1}: ${goal.label}\n`;
+    goals.forEach((goal) => {
+        markdown += `### Chapter ${goal.index}: ${goal.label}\n`;
+        if (goal.description)
+            markdown += `> ${goal.description}\n`;
         markdown += `- [ ] INITIALIZE: Setup foundations for ${goal.id}.\n`;
         const targets = map.edges.filter(e => e.source === goal.id);
-        targets.forEach(t => {
-            const node = map.nodes.find(n => n.id === t.target);
-            if (node) {
-                markdown += `- [ ] IMPLEMENT: ${node.label} (${node.id})\n`;
-                markdown += `  > Rationale: ${t.rationale}\n`;
-            }
+        const children = targets
+            .map(t => ({ target: t, node: map.nodes.find(n => n.id === t.target) }))
+            .filter(x => x.node);
+        children.sort((a, b) => a.node.index.localeCompare(a.node.index));
+        children.forEach(c => {
+            const node = c.node;
+            const edge = c.target;
+            markdown += `- [ ] Mission ${node.index}: ${node.label} (${node.id})\n`;
+            if (node.description)
+                markdown += `  > ${node.description}\n`;
+            markdown += `  > Rationale: ${edge.rationale}\n`;
         });
         markdown += `\n`;
     });
@@ -183,6 +211,33 @@ program
             console.log(JSON.stringify({ error: `Unsupported target: ${options.target}` }));
         else
             console.error(`❌ Unsupported target: ${options.target}`);
+    }
+});
+program
+    .command('sync')
+    .description('Ingest existing Markdown manifest into the spatial map')
+    .option('--manifest <path>', 'Path to the manifest file (e.g., MASTER_PROJECT_TREE.md)', 'MASTER_PROJECT_TREE.md')
+    .option('--ai-format', 'Output in machine-readable JSON format')
+    .action((options) => {
+    const aiFormat = options.aiFormat;
+    const manifestPath = path.isAbsolute(options.manifest) ? options.manifest : path.join(workspaceRoot, options.manifest);
+    if (!aiFormat)
+        console.log(`🔄 hybrid-GENESIS: Syncing from ${options.manifest}...`);
+    if (!fs.existsSync(manifestPath)) {
+        if (aiFormat)
+            console.log(JSON.stringify({ error: `Manifest not found: ${manifestPath}` }));
+        else
+            console.error(`❌ Error: Manifest not found at ${manifestPath}`);
+        process.exit(1);
+    }
+    const syncEngine = new SyncEngine_1.SyncEngine(workspaceRoot);
+    const map = syncEngine.syncFromMarkdown(manifestPath);
+    stateEngine.saveMap(map);
+    if (aiFormat) {
+        console.log(JSON.stringify({ status: 'success', nodes_count: map.nodes.length, edges_count: map.edges.length }));
+    }
+    else {
+        console.log(`✅ Sync complete. Ingested ${map.nodes.length} nodes and ${map.edges.length} edges.`);
     }
 });
 program.parse(process.argv);

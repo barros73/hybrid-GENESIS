@@ -10,6 +10,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { StateEngine } from './core/StateEngine';
 import { LogicValidator } from './core/LogicValidator';
+import { SyncEngine } from './core/SyncEngine';
 import { GenesisNode } from './core/types';
 import express, { Request, Response } from 'express';
 
@@ -20,7 +21,7 @@ const stateEngine = new StateEngine(workspaceRoot);
 program
     .name('hybrid-genesis')
     .description('Layer 0 of the Hybrid Ecosystem: Spatial Architecture Planning')
-    .version('0.5.0');
+    .version('0.6.1');
 
 program
     .command('start')
@@ -32,6 +33,26 @@ program
 
         const app = express();
         app.use(express.json());
+
+        // Simple CORS middleware
+        app.use((req, res, next) => {
+            res.header('Access-Control-Allow-Origin', '*');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+            res.header('Access-Control-Allow-Headers', 'Content-Type');
+            if (req.method === 'OPTIONS') {
+                res.sendStatus(200);
+            } else {
+                next();
+            }
+        });
+
+        app.get('/', (req: Request, res: Response) => {
+            res.send('🌌 hybrid-GENESIS Daemon is active. Use the VS Code extension to view the 3D graph.');
+        });
+
+        app.get('/health', (req: Request, res: Response) => {
+            res.json({ status: 'UP', timestamp: new Date().toISOString() });
+        });
 
         app.get('/map', (req: Request, res: Response) => {
             const map = stateEngine.readMap();
@@ -174,6 +195,34 @@ program
         } else {
             if (aiFormat) console.log(JSON.stringify({ error: `Unsupported target: ${options.target}` }));
             else console.error(`❌ Unsupported target: ${options.target}`);
+        }
+    });
+
+program
+    .command('sync')
+    .description('Ingest existing Markdown manifest into the spatial map')
+    .option('--manifest <path>', 'Path to the manifest file (e.g., MASTER_PROJECT_TREE.md)', 'MASTER_PROJECT_TREE.md')
+    .option('--ai-format', 'Output in machine-readable JSON format')
+    .action((options) => {
+        const aiFormat = options.aiFormat;
+        const manifestPath = path.isAbsolute(options.manifest) ? options.manifest : path.join(workspaceRoot, options.manifest);
+
+        if (!aiFormat) console.log(`🔄 hybrid-GENESIS: Syncing from ${options.manifest}...`);
+
+        if (!fs.existsSync(manifestPath)) {
+            if (aiFormat) console.log(JSON.stringify({ error: `Manifest not found: ${manifestPath}` }));
+            else console.error(`❌ Error: Manifest not found at ${manifestPath}`);
+            process.exit(1);
+        }
+
+        const syncEngine = new SyncEngine(workspaceRoot);
+        const map = syncEngine.syncFromMarkdown(manifestPath);
+        stateEngine.saveMap(map);
+
+        if (aiFormat) {
+            console.log(JSON.stringify({ status: 'success', nodes_count: map.nodes.length, edges_count: map.edges.length }));
+        } else {
+            console.log(`✅ Sync complete. Ingested ${map.nodes.length} nodes and ${map.edges.length} edges.`);
         }
     });
 
