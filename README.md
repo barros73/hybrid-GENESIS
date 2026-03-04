@@ -1,6 +1,8 @@
-# 🌌 hybrid-GENESIS
+# 🌌 hybrid-GENESIS — v0.6.1
+> *2026-03-04 · Copyright Fabrizio Baroni · Apache 2.0*
 
 ### The AI-Driven Spatial Architecture Planner (Layer 0)
+
 
 Linear AI chats are noisy and suffer from context amnesia. When designing complex software architectures, after 50 prompts, the LLM forgets the original constraints, the "why" behind decisions is lost, and the context window is saturated.
 
