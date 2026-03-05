@@ -1,4 +1,4 @@
-# 🌌 hybrid-GENESIS — v0.6.1
+# 🌌 hybrid-GENESIS — v0.6.2
 > *2026-03-04 · Copyright Fabrizio Baroni · Apache 2.0*
 
 ### The AI-Driven Spatial Architecture Planner (Layer 0)
