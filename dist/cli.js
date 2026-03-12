@@ -55,7 +55,7 @@ const stateEngine = new StateEngine_1.StateEngine(workspaceRoot);
 program
     .name('hybrid-genesis')
     .description('Layer 0 of the Hybrid Ecosystem: Spatial Architecture Planning')
-    .version('0.6.1');
+    .version('0.6.2');
 program
     .command('start')
     .description('Start the GENESIS daemon and local API server')
